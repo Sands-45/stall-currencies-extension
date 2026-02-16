@@ -1,8 +1,11 @@
 import React from "react";
 import type { RuntimeProps } from "@use-stall/types";
 import { Badge, Button, Card, Input } from "@use-stall/ui";
-import { StArrowBack } from "@use-stall/icons";
+import { StArrowBack, StArrowRightLong } from "@use-stall/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import LineChart, {
+  type CurrencyTrendPoint,
+} from "../../components/line-chart";
 import {
   build_rate_map,
   convert_currency,
@@ -14,40 +17,9 @@ import {
   fetch_usd_currency_rates_service,
   type CurrencyRateItem,
 } from "../../services/currency-rates.service";
-
-const get_default_query = (search_params: URLSearchParams): string => {
-  const amount_value = search_params.get("amount") ?? "200";
-  const from_value = (search_params.get("from") ?? "ZAR").toUpperCase();
-  const to_value = (search_params.get("to") ?? "USD").toUpperCase();
-  return `${amount_value} ${from_value} in ${to_value}`;
-};
-
-const get_relative_time_label = (
-  updated_at: string | null,
-  tick: number,
-): string => {
-  if (!updated_at) return "Updated recently";
-
-  const updated_ms = new Date(updated_at).getTime();
-  if (Number.isNaN(updated_ms)) return "Updated recently";
-
-  const diff_seconds = Math.max(0, Math.floor((tick - updated_ms) / 1000));
-
-  if (diff_seconds < 60) {
-    const suffix = diff_seconds === 1 ? "" : "s";
-    return `Updated ${diff_seconds} second${suffix} ago`;
-  }
-
-  const diff_minutes = Math.floor(diff_seconds / 60);
-  if (diff_minutes < 60) {
-    const suffix = diff_minutes === 1 ? "" : "s";
-    return `Updated ${diff_minutes} minute${suffix} ago`;
-  }
-
-  const diff_hours = Math.floor(diff_minutes / 60);
-  const suffix = diff_hours === 1 ? "" : "s";
-  return `Updated ${diff_hours} hour${suffix} ago`;
-};
+import { fetch_currency_trend_service } from "../../services/currency-trend.service";
+import { get_default_query, get_relative_time_label } from "./page.helpers";
+import { CenteredCardMessage, ConverterIntroSection } from "./page.sections";
 
 const ConverterPage = (_props: RuntimeProps) => {
   const [search_params] = useSearchParams();
@@ -60,6 +32,13 @@ const ConverterPage = (_props: RuntimeProps) => {
   const [error_message, set_error_message] = React.useState<string | null>(
     null,
   );
+  const [trend_points, set_trend_points] = React.useState<CurrencyTrendPoint[]>(
+    [],
+  );
+  const [trend_loading, set_trend_loading] = React.useState<boolean>(false);
+  const [trend_error_message, set_trend_error_message] = React.useState<
+    string | null
+  >(null);
   const [tick, set_tick] = React.useState<number>(Date.now());
 
   React.useEffect(() => {
@@ -143,6 +122,54 @@ const ConverterPage = (_props: RuntimeProps) => {
   }, [converted_amount, to_currency]);
 
   const is_query_valid = parsed_query !== null;
+  const weekly_trend_points = trend_points;
+  const can_show_trend_state = !loading && !error_message && rates_are_ready;
+
+  React.useEffect(() => {
+    let is_active = true;
+
+    if (!rates_are_ready) {
+      set_trend_points([]);
+      set_trend_error_message(null);
+      set_trend_loading(false);
+      return () => {
+        is_active = false;
+      };
+    }
+
+    const load_trend = async () => {
+      set_trend_loading(true);
+      set_trend_error_message(null);
+
+      try {
+        const data = await fetch_currency_trend_service(
+          from_currency,
+          to_currency,
+        );
+        if (!is_active) return;
+
+        const normalized: CurrencyTrendPoint[] = data.map((item) => ({
+          label: item.label,
+          fromRate: item.from_rate,
+          toRate: item.to_rate,
+        }));
+        set_trend_points(normalized);
+      } catch (error: unknown) {
+        if (!is_active) return;
+        set_trend_points([]);
+        set_trend_error_message(get_error_message(error));
+      } finally {
+        if (!is_active) return;
+        set_trend_loading(false);
+      }
+    };
+
+    void load_trend();
+
+    return () => {
+      is_active = false;
+    };
+  }, [rates_are_ready, from_currency, to_currency]);
 
   return (
     <div className="h-full w-full overflow-y-auto p-5">
@@ -162,19 +189,7 @@ const ConverterPage = (_props: RuntimeProps) => {
           </Button>
         </div>
 
-        <div className="mt-4">
-          <h1 className="text-lg font-semibold">Currency Conveter</h1>
-          <p className="text-muted-foreground text-sm">
-            Type a query like{" "}
-            <span className="font-medium">200 ZAR in USD</span>
-          </p>
-          {!is_query_valid && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Invalid format. Use: {"<amount> <from> in <to>"} (e.g. 200 ZAR in
-              USD)
-            </p>
-          )}
-        </div>
+        <ConverterIntroSection is_query_valid={is_query_valid} />
 
         <Input
           value={query_input}
@@ -196,7 +211,7 @@ const ConverterPage = (_props: RuntimeProps) => {
           ) : null}
 
           {!loading && !error_message ? (
-            <>
+            <React.Fragment>
               <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-3">
                 <div className="flex flex-col items-center justify-center gap-1">
                   <h2 className="text-xl font-semibold">
@@ -212,7 +227,7 @@ const ConverterPage = (_props: RuntimeProps) => {
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-1">
-                  <span className="text-2xl">→</span>
+                  <StArrowRightLong className="size-4 text-foreground" />
                   <span className="text-xs text-muted-foreground">
                     {update_label}
                   </span>
@@ -235,7 +250,49 @@ const ConverterPage = (_props: RuntimeProps) => {
                   USD, EUR, ZAR.
                 </p>
               ) : null}
-            </>
+            </React.Fragment>
+          ) : null}
+        </Card>
+
+        <Card className="p-5 grid">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold">Last 7 days trend</h2>
+            <p className="text-xs text-muted-foreground">
+              {from_currency} and {to_currency} movement relative to USD.
+            </p>
+          </div>
+
+          {can_show_trend_state && !trend_loading && !trend_error_message ? (
+            <LineChart
+              data={weekly_trend_points}
+              fromCurrency={from_currency}
+              toCurrency={to_currency}
+            />
+          ) : null}
+
+          {can_show_trend_state && trend_loading ? (
+            <CenteredCardMessage>Loading trend data...</CenteredCardMessage>
+          ) : null}
+
+          {can_show_trend_state && trend_error_message ? (
+            <CenteredCardMessage tone="destructive">
+              Failed to load trend data: {trend_error_message}
+            </CenteredCardMessage>
+          ) : null}
+
+          {can_show_trend_state &&
+          !trend_loading &&
+          !trend_error_message &&
+          weekly_trend_points.length === 0 ? (
+            <CenteredCardMessage>
+              No trend data available for the selected currency pair.
+            </CenteredCardMessage>
+          ) : null}
+
+          {!can_show_trend_state ? (
+            <CenteredCardMessage>
+              Trend chart will appear once rates are available.
+            </CenteredCardMessage>
           ) : null}
         </Card>
       </div>

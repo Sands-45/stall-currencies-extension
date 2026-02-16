@@ -19,8 +19,14 @@ const external_modules = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-router-dom",
+  "sonner",
+  "dexie-react-hooks",
+  "framer-motion",
+  "@use-stall/icons",
+  "@use-stall/ui",
   "@use-stall/types",
+  "@use-stall/core",
+  "react-router-dom",
 ];
 
 const default_shared_modules: SharedModule[] = external_modules.map(
@@ -30,7 +36,8 @@ const default_shared_modules: SharedModule[] = external_modules.map(
   }),
 );
 
-const fix_as_syntax = (named: string): string => named.replace(/\s+as\s+/g, ":");
+const fix_as_syntax = (named: string): string =>
+  named.replace(/\s+as\s+/g, ":");
 
 interface ReplacementRule {
   pattern: RegExp;
@@ -98,7 +105,10 @@ const post_process_code = (
   for (const shared_module of shared_modules) {
     const replacements = generate_replacements(shared_module);
     for (const rule of replacements) {
-      processed_code = processed_code.replace(rule.pattern, rule.replacement as never);
+      processed_code = processed_code.replace(
+        rule.pattern,
+        rule.replacement as never,
+      );
     }
   }
 

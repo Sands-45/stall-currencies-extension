@@ -80,7 +80,7 @@ export const LOOK_UP: ExtensionLookupGroup[] = [
         always_show: true,
         run: ({ helpers }) => {
           helpers.navigate(
-            `${extension_base_path}/converter?amount=200&from=ZAR&to=USD`,
+            `${extension_base_path}/converter?amount=100&from=ZAR&to=USD`,
           );
         },
       },
