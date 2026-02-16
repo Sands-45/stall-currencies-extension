@@ -1,0 +1,37 @@
+{
+  "name": "currencies",
+  "type": "module",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "unpkg": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "bun test && bun run stall.config.ts --production",
+    "dev": "bun test && bun run stall.config.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@use-stall/icons": "^0.0.6",
+    "@use-stall/types": "^0.3.6",
+    "@use-stall/ui": "^0.1.4",
+    "chokidar": "^5.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0"
+  },
+  "peerDependencies": {
+    "@use-stall/icons": "^0.0.6",
+    "@use-stall/types": "^0.3.6",
+    "@use-stall/ui": "^0.1.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0",
+    "typescript": "^5"
+  }
+}

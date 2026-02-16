@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/PoggoLLC/stall-extensions/refs/heads/main/schema/v1/schema.json",
+  "id": "currencies",
+  "name": "Currencies",
+  "description": "Live currency rates and conversion tools for Stall Flex",
+  "keywords": ["rates", "exchange", "currency", "converter"],
+  "icon": "/assets/icon.png",
+  "version": "0.0.1",
+  "authors": ["Stall"],
+  "repo": "https://github.com/Sands-45/stall-currency-converter",
+  "homepage": "https://github.com/Sands-45/stall-currency-converter",
+  "entrypoint": {
+    "id": "usd-rates",
+    "type": "lookup"
+  },
+  "offline_ready": false
+}
