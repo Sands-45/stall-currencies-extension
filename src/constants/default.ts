@@ -1,5 +1,6 @@
-export const BASE_RATES_ENDPOINT = "https://open.er-api.com/v6/latest";
-export const USD_RATES_ENDPOINT = `${BASE_RATES_ENDPOINT}/USD`;
+export const BASE_RATES_ENDPOINT = "https://api.frankfurter.dev/v1/latest";
+export const USD_RATES_ENDPOINT = `${BASE_RATES_ENDPOINT}?base=USD`;
+export const FALLBACK_RATES_ENDPOINT = "https://open.er-api.com/v6/latest";
 export const USD_TREND_ENDPOINT = "https://api.frankfurter.app";
 export const CURRENCY_NEWS_RSS_ENDPOINT = "https://api.rss2json.com/v1/api.json";
 

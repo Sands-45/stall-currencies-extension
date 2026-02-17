@@ -1,4 +1,4 @@
-import { createSelectors } from "@/utils";
+import { createSelectors, normalize_currency_code } from "@/utils";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CurrencyRateItem, CurrencyTrendDay, NewsItem } from "@/types/index";
@@ -45,7 +45,7 @@ export const useRatesStore = create<RatesState>()(
       trend_cache: {},
       news_cache: {},
       set_base_currency: (currency) => {
-        const next = currency.trim().toUpperCase();
+        const next = normalize_currency_code(currency);
         if (!next) return;
         set((state) => ({ ...state, base_currency: next }));
       },

@@ -1,5 +1,6 @@
 import type { StoreApi, UseBoundStore } from "zustand";
 import type { CurrencyRateItem } from "./types";
+import { FLAG_COUNTRT_BY_CORRENCY } from "./constants/default";
 
 type WithSelectors<S> = S extends { getState: () => infer T }
   ? S & { use: { [K in keyof T]: () => T[K] } }
@@ -22,6 +23,36 @@ interface ConversionQuery {
   from_currency: string;
   to_currency: string;
 }
+
+const COUNTRY_TO_CURRENCY = Object.entries(FLAG_COUNTRT_BY_CORRENCY).reduce<
+  Record<string, string>
+>((acc, [currency, country]) => {
+  const key = country.toUpperCase();
+  if (!acc[key]) {
+    acc[key] = currency;
+  }
+  return acc;
+}, {});
+
+export const normalize_currency_code = (
+  value: string | null | undefined,
+  fallback = "USD",
+): string => {
+  const normalized = (value ?? "").trim().toUpperCase();
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (FLAG_COUNTRT_BY_CORRENCY[normalized]) {
+    return normalized;
+  }
+
+  if (normalized.length === 2 && COUNTRY_TO_CURRENCY[normalized]) {
+    return COUNTRY_TO_CURRENCY[normalized];
+  }
+
+  return normalized;
+};
 
 export const build_rate_map = (
   items: CurrencyRateItem[],
@@ -55,7 +86,7 @@ export const parse_conversion_query = (
   const clean_value = value.trim().replace(/\s+/g, " ");
   if (!clean_value) return null;
 
-  const pattern = /^([0-9]*\.?[0-9]+)\s+([a-z]{3})\s+(?:in|to)\s+([a-z]{3})$/i;
+  const pattern = /^([0-9]*\.?[0-9]+)\s+([a-z]{2,3})\s+(?:in|to)\s+([a-z]{2,3})$/i;
   const match = clean_value.match(pattern);
 
   if (!match) return null;
@@ -65,8 +96,8 @@ export const parse_conversion_query = (
 
   return {
     amount,
-    from_currency: match[2]?.toUpperCase() ?? "",
-    to_currency: match[3]?.toUpperCase() ?? "",
+    from_currency: normalize_currency_code(match[2]),
+    to_currency: normalize_currency_code(match[3]),
   };
 };
 

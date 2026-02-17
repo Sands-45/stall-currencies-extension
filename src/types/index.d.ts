@@ -24,9 +24,12 @@ export interface CurrencyRateItem {
 }
 
 export interface UsdRatesResponse {
-  result: string;
-  base_code: string;
-  time_last_update_utc: string;
+  result?: string;
+  base_code?: string;
+  time_last_update_utc?: string;
+  amount?: number;
+  base?: string;
+  date?: string;
   rates: Record<string, number>;
 }
 

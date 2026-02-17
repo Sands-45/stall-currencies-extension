@@ -2,14 +2,15 @@ import type { ExtensionLookupGroup } from "@use-stall/types";
 import { fetch_currency_rates_service } from "./services/currency-rates.service";
 import { USD_RATES_ENDPOINT } from "./constants/default";
 import { useRatesStore } from "./store/rates-store";
+import { normalize_currency_code } from "./utils";
 
 const extension_base_path = "/extensions/currencies";
 
 const build_converter_path = (base_currency: string, to_currency?: string): string => {
-  const normalized_base = base_currency.toUpperCase();
+  const normalized_base = normalize_currency_code(base_currency);
   const target_currency =
     typeof to_currency === "string" && to_currency.trim().length > 0
-      ? to_currency.toUpperCase()
+      ? normalize_currency_code(to_currency)
       : "USD";
 
   return `${extension_base_path}/converter?amount=1&from=${normalized_base}&to=${target_currency}`;
@@ -18,8 +19,8 @@ const build_converter_path = (base_currency: string, to_currency?: string): stri
 const build_news_path = (currency?: string): string => {
   const target_currency =
     typeof currency === "string" && currency.trim().length > 0
-      ? currency.toUpperCase()
-      : useRatesStore.getState().base_currency;
+      ? normalize_currency_code(currency)
+      : normalize_currency_code(useRatesStore.getState().base_currency);
 
   return `${extension_base_path}/news?currency=${target_currency}`;
 };
@@ -33,7 +34,9 @@ export const LOOK_UP: ExtensionLookupGroup[] = [
     source: USD_RATES_ENDPOINT,
     fetch: async ({ search_query }) => {
       const base_currency = useRatesStore.getState().base_currency;
-      const rates = await fetch_currency_rates_service(base_currency);
+      const rates = await fetch_currency_rates_service(
+        normalize_currency_code(base_currency),
+      );
       const query = (search_query ?? "").trim().toLowerCase();
 
       if (!query) return rates;
@@ -105,9 +108,10 @@ export const LOOK_UP: ExtensionLookupGroup[] = [
         always_show: true,
         run: ({ helpers }) => {
           const base_currency = useRatesStore.getState().base_currency;
-          const fallback_to = base_currency === "USD" ? "EUR" : "USD";
+          const normalized_base = normalize_currency_code(base_currency);
+          const fallback_to = normalized_base === "USD" ? "EUR" : "USD";
           helpers.navigate(
-            `${extension_base_path}/converter?amount=100&from=${base_currency}&to=${fallback_to}`,
+            `${extension_base_path}/converter?amount=100&from=${normalized_base}&to=${fallback_to}`,
           );
         },
       },

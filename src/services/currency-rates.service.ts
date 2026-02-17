@@ -1,11 +1,13 @@
 import {
   BASE_RATES_ENDPOINT,
+  FALLBACK_RATES_ENDPOINT,
   FLAG_COUNTRT_BY_CORRENCY,
   RATES_TTL,
 } from "@/constants/default";
 import flags from "@/assets/flags.json";
 import { useRatesStore } from "@/store/rates-store";
 import type { CurrencyRateItem, UsdRatesResponse } from "@/types/index";
+import { normalize_currency_code } from "@/utils";
 
 const get_currency_name = (currency: string): string => {
   try {
@@ -47,7 +49,11 @@ const normalize_rates = (
   base_currency: string,
 ): CurrencyRateItem[] => {
   const rates_record = payload.rates ?? {};
-  const updated_at = payload.time_last_update_utc ?? new Date().toISOString();
+  const updated_at = payload.time_last_update_utc
+    ? payload.time_last_update_utc
+    : payload.date
+      ? `${payload.date}T00:00:00.000Z`
+      : new Date().toISOString();
 
   const items: CurrencyRateItem[] = Object.entries(rates_record).map(
     ([currency_code, rate]) => {
@@ -85,7 +91,7 @@ export const fetch_currency_rates_service = async (
   base_currency = "USD",
   force_refresh = false,
 ): Promise<CurrencyRateItem[]> => {
-  const normalized_base = base_currency.toUpperCase();
+  const normalized_base = normalize_currency_code(base_currency);
 
   useRatesStore.getState().clear_expired_cache();
 
@@ -94,14 +100,36 @@ export const fetch_currency_rates_service = async (
     return cache_entry.data;
   }
 
-  const response = await fetch(`${BASE_RATES_ENDPOINT}/${normalized_base}`);
-  if (!response.ok) {
-    throw new Error(`Rates request failed with status ${response.status}`);
+  const response = await fetch(
+    `${BASE_RATES_ENDPOINT}?base=${encodeURIComponent(normalized_base)}`,
+  );
+  const frankfurter_payload = response.ok
+    ? ((await response.json()) as Partial<UsdRatesResponse>)
+    : undefined;
+
+  const frankfurter_count = Object.keys(frankfurter_payload?.rates ?? {}).length;
+  let payload = frankfurter_payload;
+
+  // Frankfurter has a smaller supported currency set; fallback keeps the full list.
+  if (!payload || frankfurter_count < 80) {
+    const fallback_response = await fetch(
+      `${FALLBACK_RATES_ENDPOINT}/${encodeURIComponent(normalized_base)}`,
+    );
+    if (!fallback_response.ok) {
+      if (!payload) {
+        throw new Error(`Rates request failed with status ${response.status}`);
+      }
+    } else {
+      const fallback_payload =
+        (await fallback_response.json()) as Partial<UsdRatesResponse>;
+      if (fallback_payload.rates && Object.keys(fallback_payload.rates).length > 0) {
+        payload = fallback_payload;
+      }
+    }
   }
 
-  const payload = (await response.json()) as Partial<UsdRatesResponse>;
-  if (payload.result && payload.result !== "success") {
-    throw new Error("Rates API returned a non-success response");
+  if (!payload?.rates || Object.keys(payload.rates).length === 0) {
+    throw new Error("Rates API returned an empty response");
   }
 
   const data = normalize_rates(payload, normalized_base);

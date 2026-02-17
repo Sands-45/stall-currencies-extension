@@ -1,11 +1,16 @@
+import { normalize_currency_code } from "@/utils";
+
 export const get_default_query = (
   search_params: URLSearchParams,
   base_currency = "USD",
 ): string => {
+  const normalized_base = normalize_currency_code(base_currency);
   const amount_value = search_params.get("amount") ?? "200";
-  const from_value = (search_params.get("from") ?? base_currency).toUpperCase();
-  const fallback_to = base_currency.toUpperCase() === "USD" ? "EUR" : "USD";
-  const to_value = (search_params.get("to") ?? fallback_to).toUpperCase();
+  const from_value = normalize_currency_code(
+    search_params.get("from") ?? normalized_base,
+  );
+  const fallback_to = normalized_base === "USD" ? "EUR" : "USD";
+  const to_value = normalize_currency_code(search_params.get("to") ?? fallback_to);
   return `${amount_value} ${from_value} in ${to_value}`;
 };
 

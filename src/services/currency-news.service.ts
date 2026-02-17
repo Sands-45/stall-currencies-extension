@@ -1,6 +1,7 @@
 import { CURRENCY_NEWS_RSS_ENDPOINT, NEWS_TTL } from "@/constants/default";
 import { useRatesStore } from "@/store/rates-store";
 import type { NewsItem } from "@/types/index";
+import { normalize_currency_code } from "@/utils";
 
 interface Rss2JsonItem {
   title?: string;
@@ -52,7 +53,7 @@ export const fetch_currency_news_service = async (
   currency: string,
   force_refresh = false,
 ): Promise<NewsItem[]> => {
-  const normalized_currency = currency.trim().toUpperCase() || "USD";
+  const normalized_currency = normalize_currency_code(currency);
   const cache_key = normalized_currency;
 
   useRatesStore.getState().clear_expired_cache();

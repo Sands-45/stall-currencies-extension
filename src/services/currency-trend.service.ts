@@ -1,6 +1,7 @@
 import { TREND_TTL, USD_TREND_ENDPOINT } from "@/constants/default";
 import { useRatesStore } from "@/store/rates-store";
 import type { CurrencyTrendDay, TrendApiResponse } from "@/types/index";
+import { normalize_currency_code } from "@/utils";
 
 const TREND_POINTS = 7;
 const TREND_LOOKBACK_DAYS = 14;
@@ -55,9 +56,9 @@ export const fetch_currency_trend_service = async (
   base_currency = "USD",
   force_refresh = false,
 ): Promise<CurrencyTrendDay[]> => {
-  const from = from_currency.toUpperCase();
-  const to = to_currency.toUpperCase();
-  const base = base_currency.toUpperCase();
+  const from = normalize_currency_code(from_currency);
+  const to = normalize_currency_code(to_currency);
+  const base = normalize_currency_code(base_currency);
   const cache_key = `${base}:${from}->${to}`;
 
   useRatesStore.getState().clear_expired_cache();

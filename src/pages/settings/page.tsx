@@ -5,6 +5,7 @@ import { StArrowBack } from "@use-stall/icons";
 import { useNavigate } from "react-router-dom";
 import { FLAG_COUNTRT_BY_CORRENCY } from "@/constants/default";
 import useRatesSelector from "@/store/rates-store";
+import { normalize_currency_code } from "@/utils";
 import { toast } from "sonner";
 
 const ALL_CURRENCIES = Object.keys(FLAG_COUNTRT_BY_CORRENCY).sort((a, b) =>
@@ -23,7 +24,7 @@ const SettingsPage = (_props: RuntimeProps) => {
   }, [base_currency]);
 
   const handle_save = React.useCallback(() => {
-    const normalized = input_value.trim().toUpperCase();
+    const normalized = normalize_currency_code(input_value);
 
     if (!normalized) {
       toast.warning("Please enter a currency code.");
