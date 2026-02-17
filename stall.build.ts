@@ -27,6 +27,8 @@ const external_modules = [
   "@use-stall/types",
   "@use-stall/core",
   "react-router-dom",
+  "zustand",
+  "zustand/middleware",
 ];
 
 const default_shared_modules: SharedModule[] = external_modules.map(

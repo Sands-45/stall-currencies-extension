@@ -1,7 +1,11 @@
-export const get_default_query = (search_params: URLSearchParams): string => {
+export const get_default_query = (
+  search_params: URLSearchParams,
+  base_currency = "USD",
+): string => {
   const amount_value = search_params.get("amount") ?? "200";
-  const from_value = (search_params.get("from") ?? "ZAR").toUpperCase();
-  const to_value = (search_params.get("to") ?? "USD").toUpperCase();
+  const from_value = (search_params.get("from") ?? base_currency).toUpperCase();
+  const fallback_to = base_currency.toUpperCase() === "USD" ? "EUR" : "USD";
+  const to_value = (search_params.get("to") ?? fallback_to).toUpperCase();
   return `${amount_value} ${from_value} in ${to_value}`;
 };
 
@@ -31,4 +35,3 @@ export const get_relative_time_label = (
   const suffix = diff_hours === 1 ? "" : "s";
   return `Updated ${diff_hours} hour${suffix} ago`;
 };
-

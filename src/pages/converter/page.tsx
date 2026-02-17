@@ -14,18 +14,20 @@ import {
   parse_conversion_query,
 } from "../../utils";
 import {
-  fetch_usd_currency_rates_service,
-  type CurrencyRateItem,
+  fetch_currency_rates_service,
 } from "../../services/currency-rates.service";
 import { fetch_currency_trend_service } from "../../services/currency-trend.service";
+import useRatesSelector from "../../store/rates-store";
 import { get_default_query, get_relative_time_label } from "./page.helpers";
 import { CenteredCardMessage, ConverterIntroSection } from "./page.sections";
+import type { CurrencyRateItem } from "../../types";
 
 const ConverterPage = (_props: RuntimeProps) => {
   const [search_params] = useSearchParams();
   const navigate = useNavigate();
+  const base_currency = useRatesSelector.use.base_currency();
   const [query_input, set_query_input] = React.useState<string>(() =>
-    get_default_query(search_params),
+    get_default_query(search_params, base_currency),
   );
   const [rate_items, set_rate_items] = React.useState<CurrencyRateItem[]>([]);
   const [loading, set_loading] = React.useState<boolean>(true);
@@ -42,6 +44,10 @@ const ConverterPage = (_props: RuntimeProps) => {
   const [tick, set_tick] = React.useState<number>(Date.now());
 
   React.useEffect(() => {
+    set_query_input(get_default_query(search_params, base_currency));
+  }, [search_params, base_currency]);
+
+  React.useEffect(() => {
     let is_active = true;
 
     const load_rates = async () => {
@@ -49,7 +55,7 @@ const ConverterPage = (_props: RuntimeProps) => {
       set_error_message(null);
 
       try {
-        const data = await fetch_usd_currency_rates_service();
+        const data = await fetch_currency_rates_service(base_currency);
         if (!is_active) return;
         set_rate_items(data);
       } catch (error: unknown) {
@@ -66,7 +72,7 @@ const ConverterPage = (_props: RuntimeProps) => {
     return () => {
       is_active = false;
     };
-  }, []);
+  }, [base_currency]);
 
   React.useEffect(() => {
     const timer = setInterval(() => set_tick(Date.now()), 1000);
@@ -83,8 +89,8 @@ const ConverterPage = (_props: RuntimeProps) => {
     [rate_items],
   );
 
-  const from_currency = parsed_query?.from_currency ?? "USD";
-  const to_currency = parsed_query?.to_currency ?? "USD";
+  const from_currency = parsed_query?.from_currency ?? base_currency;
+  const to_currency = parsed_query?.to_currency ?? (base_currency === "USD" ? "EUR" : "USD");
   const input_amount = parsed_query?.amount ?? 0;
 
   const from_currency_item = React.useMemo(
@@ -145,6 +151,7 @@ const ConverterPage = (_props: RuntimeProps) => {
         const data = await fetch_currency_trend_service(
           from_currency,
           to_currency,
+          base_currency,
         );
         if (!is_active) return;
 
@@ -169,7 +176,7 @@ const ConverterPage = (_props: RuntimeProps) => {
     return () => {
       is_active = false;
     };
-  }, [rates_are_ready, from_currency, to_currency]);
+  }, [rates_are_ready, from_currency, to_currency, base_currency]);
 
   return (
     <div className="h-full w-full overflow-y-auto p-5">
@@ -258,7 +265,7 @@ const ConverterPage = (_props: RuntimeProps) => {
           <div className="mb-4">
             <h2 className="text-base font-semibold">Last 7 days trend</h2>
             <p className="text-xs text-muted-foreground">
-              {from_currency} and {to_currency} movement relative to USD.
+              {from_currency} and {to_currency} movement relative to {base_currency}.
             </p>
           </div>
 

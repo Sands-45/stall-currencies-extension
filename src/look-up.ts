@@ -1,27 +1,40 @@
 import type { ExtensionLookupGroup } from "@use-stall/types";
-import { fetch_usd_currency_rates_service } from "./services/currency-rates.service";
+import { fetch_currency_rates_service } from "./services/currency-rates.service";
 import { USD_RATES_ENDPOINT } from "./constants/default";
+import { useRatesStore } from "./store/rates-store";
 
 const extension_base_path = "/extensions/currencies";
-const build_converter_path = (to_currency?: string): string => {
+
+const build_converter_path = (base_currency: string, to_currency?: string): string => {
+  const normalized_base = base_currency.toUpperCase();
   const target_currency =
     typeof to_currency === "string" && to_currency.trim().length > 0
       ? to_currency.toUpperCase()
       : "USD";
 
-  return `${extension_base_path}/converter?amount=1&from=USD&to=${target_currency}`;
+  return `${extension_base_path}/converter?amount=1&from=${normalized_base}&to=${target_currency}`;
+};
+
+const build_news_path = (currency?: string): string => {
+  const target_currency =
+    typeof currency === "string" && currency.trim().length > 0
+      ? currency.toUpperCase()
+      : useRatesStore.getState().base_currency;
+
+  return `${extension_base_path}/news?currency=${target_currency}`;
 };
 
 export const LOOK_UP: ExtensionLookupGroup[] = [
   {
     id: "usd-rates",
     title: "Currencies",
-    description: "Live exchange rates for all currencies against US Dollar",
+    description: "Live exchange rates for all currencies against selected base",
     data_origin: "remote",
     source: USD_RATES_ENDPOINT,
     fetch: async ({ search_query }) => {
-      const rates = await fetch_usd_currency_rates_service();
-      const query = search_query.trim().toLowerCase();
+      const base_currency = useRatesStore.getState().base_currency;
+      const rates = await fetch_currency_rates_service(base_currency);
+      const query = (search_query ?? "").trim().toLowerCase();
 
       if (!query) return rates;
 
@@ -62,14 +75,26 @@ export const LOOK_UP: ExtensionLookupGroup[] = [
     },
     actions: [
       {
-        id: "convert-from-usd",
-        label: "Convert from USD",
+        id: "convert-from-base",
+        label: "Convert",
         close_on_complete: true,
         reopen_on_return: true,
         run: ({ item, helpers }) => {
           const to_currency =
             typeof item?.currency === "string" ? item.currency : undefined;
-          helpers.navigate(build_converter_path(to_currency));
+          const base_currency = useRatesStore.getState().base_currency;
+          helpers.navigate(build_converter_path(base_currency, to_currency));
+        },
+      },
+      {
+        id: "news-for-currency",
+        label: "Currency News",
+        close_on_complete: true,
+        reopen_on_return: true,
+        run: ({ item, helpers }) => {
+          const currency =
+            typeof item?.currency === "string" ? item.currency : undefined;
+          helpers.navigate(build_news_path(currency));
         },
       },
       {
@@ -79,9 +104,21 @@ export const LOOK_UP: ExtensionLookupGroup[] = [
         reopen_on_return: true,
         always_show: true,
         run: ({ helpers }) => {
+          const base_currency = useRatesStore.getState().base_currency;
+          const fallback_to = base_currency === "USD" ? "EUR" : "USD";
           helpers.navigate(
-            `${extension_base_path}/converter?amount=100&from=ZAR&to=USD`,
+            `${extension_base_path}/converter?amount=100&from=${base_currency}&to=${fallback_to}`,
           );
+        },
+      },
+      {
+        id: "open-settings",
+        label: "Settings",
+        close_on_complete: true,
+        reopen_on_return: true,
+        always_show: true,
+        run: ({ helpers }) => {
+          helpers.navigate(`${extension_base_path}/settings`);
         },
       },
     ],

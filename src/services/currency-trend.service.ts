@@ -1,32 +1,9 @@
 import { TREND_TTL, USD_TREND_ENDPOINT } from "@/constants/default";
+import { useRatesStore } from "@/store/rates-store";
+import type { CurrencyTrendDay, TrendApiResponse } from "@/types/index";
 
 const TREND_POINTS = 7;
 const TREND_LOOKBACK_DAYS = 14;
-
-export interface CurrencyTrendDay {
-  date: string;
-  label: string;
-  from_rate: number;
-  to_rate: number;
-}
-
-interface TrendApiResponse {
-  amount: number;
-  base: string;
-  start_date: string;
-  end_date: string;
-  rates: Record<string, Record<string, number>>;
-}
-
-let trend_cache:
-  | Record<
-      string,
-      {
-        expires_at: number;
-        data: CurrencyTrendDay[];
-      }
-    >
-  | undefined;
 
 const to_iso_date = (value: Date): string => {
   return value.toISOString().slice(0, 10);
@@ -50,10 +27,6 @@ const resolve_rate_for_date = (
   rates_by_date: Record<string, Record<string, number>>,
   sorted_dates: string[],
 ): number => {
-  if (currency === "USD") {
-    return 1;
-  }
-
   for (let index = sorted_dates.length - 1; index >= 0; index -= 1) {
     const date = sorted_dates[index];
     if (!date || date > target_date) {
@@ -79,15 +52,18 @@ const resolve_rate_for_date = (
 export const fetch_currency_trend_service = async (
   from_currency: string,
   to_currency: string,
+  base_currency = "USD",
   force_refresh = false,
 ): Promise<CurrencyTrendDay[]> => {
   const from = from_currency.toUpperCase();
   const to = to_currency.toUpperCase();
-  const cache_key = `${from}->${to}`;
-  const now = Date.now();
+  const base = base_currency.toUpperCase();
+  const cache_key = `${base}:${from}->${to}`;
 
-  const cached_item = trend_cache?.[cache_key];
-  if (!force_refresh && cached_item && cached_item.expires_at > now) {
+  useRatesStore.getState().clear_expired_cache();
+
+  const cached_item = useRatesStore.getState().trend_cache[cache_key];
+  if (!force_refresh && cached_item && cached_item.expires_at > Date.now()) {
     return cached_item.data;
   }
 
@@ -96,10 +72,10 @@ export const fetch_currency_trend_service = async (
   const end_date = today;
 
   const requested_symbols = Array.from(new Set([from, to])).filter(
-    (currency) => currency !== "USD",
+    (currency) => currency !== base,
   );
 
-  const query = new URLSearchParams({ from: "USD" });
+  const query = new URLSearchParams({ from: base });
   if (requested_symbols.length > 0) {
     query.set("to", requested_symbols.join(","));
   }
@@ -126,18 +102,15 @@ export const fetch_currency_trend_service = async (
     (_, index) => {
       const date = add_utc_days(end_date, -(TREND_POINTS - 1 - index));
       const iso_date = to_iso_date(date);
-      const from_rate = resolve_rate_for_date(
-        from,
-        iso_date,
-        rates_by_date,
-        sorted_dates,
-      );
-      const to_rate = resolve_rate_for_date(
-        to,
-        iso_date,
-        rates_by_date,
-        sorted_dates,
-      );
+
+      const from_rate =
+        from === base
+          ? 1
+          : resolve_rate_for_date(from, iso_date, rates_by_date, sorted_dates);
+      const to_rate =
+        to === base
+          ? 1
+          : resolve_rate_for_date(to, iso_date, rates_by_date, sorted_dates);
 
       return {
         date: iso_date,
@@ -152,13 +125,7 @@ export const fetch_currency_trend_service = async (
     },
   );
 
-  trend_cache = {
-    ...trend_cache,
-    [cache_key]: {
-      data: trend_days,
-      expires_at: now + TREND_TTL,
-    },
-  };
+  useRatesStore.getState().set_trend_cache(cache_key, trend_days, TREND_TTL);
 
   return trend_days;
 };

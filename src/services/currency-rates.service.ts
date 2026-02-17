@@ -1,28 +1,11 @@
-import { FLAG_COUNTRT_BY_CORRENCY, RATES_TTL, USD_RATES_ENDPOINT } from "@/constants/default";
-
-export interface CurrencyRateItem {
-  id: string;
-  currency: string;
-  currency_name: string;
-  symbol: string;
-  rate: number;
-  flag: string;
-  updated_at: string;
-}
-
-interface UsdRatesResponse {
-  result: string;
-  base_code: string;
-  time_last_update_utc: string;
-  rates: Record<string, number>;
-}
-
-let rate_cache:
-  | {
-      expires_at: number;
-      data: CurrencyRateItem[];
-    }
-  | undefined;
+import {
+  BASE_RATES_ENDPOINT,
+  FLAG_COUNTRT_BY_CORRENCY,
+  RATES_TTL,
+} from "@/constants/default";
+import flags from "@/assets/flags.json";
+import { useRatesStore } from "@/store/rates-store";
+import type { CurrencyRateItem, UsdRatesResponse } from "@/types/index";
 
 const get_currency_name = (currency: string): string => {
   try {
@@ -53,14 +36,19 @@ const get_currency_symbol = (currency: string): string => {
 
 const get_currency_flag = (currency: string): string => {
   const country_code = FLAG_COUNTRT_BY_CORRENCY[currency] ?? "US";
-  return `https://flagcdn.com/w40/${country_code.toLowerCase()}.png`;
+  const flag = flags.find((f) => f.code === country_code.toLowerCase());
+  return (
+    flag?.flag ?? `https://flagcdn.com/w40/${country_code.toLowerCase()}.png`
+  );
 };
 
 const normalize_rates = (
   payload: Partial<UsdRatesResponse>,
+  base_currency: string,
 ): CurrencyRateItem[] => {
   const rates_record = payload.rates ?? {};
   const updated_at = payload.time_last_update_utc ?? new Date().toISOString();
+
   const items: CurrencyRateItem[] = Object.entries(rates_record).map(
     ([currency_code, rate]) => {
       const currency = currency_code.toUpperCase();
@@ -76,15 +64,16 @@ const normalize_rates = (
     },
   );
 
-  const has_usd = items.some((item) => item.currency === "USD");
-  if (!has_usd) {
+  const normalized_base = base_currency.toUpperCase();
+  const has_base = items.some((item) => item.currency === normalized_base);
+  if (!has_base) {
     items.push({
-      id: "USD",
-      currency: "USD",
-      currency_name: get_currency_name("USD"),
-      symbol: "$",
+      id: normalized_base,
+      currency: normalized_base,
+      currency_name: get_currency_name(normalized_base),
+      symbol: get_currency_symbol(normalized_base),
       rate: 1,
-      flag: get_currency_flag("USD"),
+      flag: get_currency_flag(normalized_base),
       updated_at,
     });
   }
@@ -92,20 +81,20 @@ const normalize_rates = (
   return items.sort((a, b) => a.currency.localeCompare(b.currency));
 };
 
-export const fetch_usd_currency_rates_service = async (
+export const fetch_currency_rates_service = async (
+  base_currency = "USD",
   force_refresh = false,
 ): Promise<CurrencyRateItem[]> => {
-  const now = Date.now();
-  if (
-    !force_refresh &&
-    rate_cache &&
-    rate_cache.data.length > 0 &&
-    rate_cache.expires_at > now
-  ) {
-    return rate_cache.data;
+  const normalized_base = base_currency.toUpperCase();
+
+  useRatesStore.getState().clear_expired_cache();
+
+  const cache_entry = useRatesStore.getState().rates_cache[normalized_base];
+  if (!force_refresh && cache_entry && cache_entry.expires_at > Date.now()) {
+    return cache_entry.data;
   }
 
-  const response = await fetch(USD_RATES_ENDPOINT);
+  const response = await fetch(`${BASE_RATES_ENDPOINT}/${normalized_base}`);
   if (!response.ok) {
     throw new Error(`Rates request failed with status ${response.status}`);
   }
@@ -115,11 +104,14 @@ export const fetch_usd_currency_rates_service = async (
     throw new Error("Rates API returned a non-success response");
   }
 
-  const data = normalize_rates(payload);
-  rate_cache = {
-    data,
-    expires_at: now + RATES_TTL,
-  };
+  const data = normalize_rates(payload, normalized_base);
+  useRatesStore.getState().set_rates_cache(normalized_base, data, RATES_TTL);
 
   return data;
+};
+
+export const fetch_usd_currency_rates_service = async (
+  force_refresh = false,
+): Promise<CurrencyRateItem[]> => {
+  return fetch_currency_rates_service("USD", force_refresh);
 };
