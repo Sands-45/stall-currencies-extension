@@ -87,21 +87,12 @@ const NewsPage = (_props: RuntimeProps) => {
         </div>
 
         <div className="space-y-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <Input
-              value={currency}
-              onChange={(event) =>
-                set_currency(event.target.value.toUpperCase())
-              }
-              placeholder="USD"
-            />
-          </div>
-
           {items && !loading && items.length > 0 ? (
-            <div className="grid gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {items.map((item) => (
                 <a
-                  className="block rounded-lg bg-card border border-border p-5 hover:bg-muted/30 transition-colors"
+                  className="col-span-1 hover:border-primary rounded-xl bg-card border border-border p-5
+                  hover:bg-muted/30 transition-colors"
                   href={item.link}
                   key={item.id}
                   rel="noreferrer"

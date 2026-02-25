@@ -5,7 +5,7 @@
   "description": "Live currency rates and conversion tools for Stall Flex",
   "keywords": ["rates", "exchange", "currency", "converter"],
   "icon": "/assets/icon.png",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "authors": ["Stall"],
   "repo": "https://github.com/Sands-45/stall-currency-converter",
   "homepage": "https://github.com/Sands-45/stall-currency-converter",

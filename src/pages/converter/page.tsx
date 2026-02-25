@@ -1,7 +1,7 @@
 import React from "react";
 import type { RuntimeProps } from "@use-stall/types";
 import { Badge, Button, Card, Input } from "@use-stall/ui";
-import { StArrowBack, StArrowRightLong } from "@use-stall/icons";
+import { StArrowBack, StArrowRightLong, StCalculator } from "@use-stall/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import LineChart, {
   type CurrencyTrendPoint,
@@ -13,9 +13,7 @@ import {
   get_error_message,
   parse_conversion_query,
 } from "../../utils";
-import {
-  fetch_currency_rates_service,
-} from "../../services/currency-rates.service";
+import { fetch_currency_rates_service } from "../../services/currency-rates.service";
 import { fetch_currency_trend_service } from "../../services/currency-trend.service";
 import useRatesSelector from "../../store/rates-store";
 import { get_default_query, get_relative_time_label } from "./page.helpers";
@@ -90,7 +88,8 @@ const ConverterPage = (_props: RuntimeProps) => {
   );
 
   const from_currency = parsed_query?.from_currency ?? base_currency;
-  const to_currency = parsed_query?.to_currency ?? (base_currency === "USD" ? "EUR" : "USD");
+  const to_currency =
+    parsed_query?.to_currency ?? (base_currency === "USD" ? "EUR" : "USD");
   const input_amount = parsed_query?.amount ?? 0;
 
   const from_currency_item = React.useMemo(
@@ -198,11 +197,15 @@ const ConverterPage = (_props: RuntimeProps) => {
 
         <ConverterIntroSection is_query_valid={is_query_valid} />
 
-        <Input
-          value={query_input}
-          onChange={(event) => set_query_input(event.target.value)}
-          placeholder="200 ZAR in USD"
-        />
+        <div className="relative w-full h-12">
+          <Input
+            value={query_input}
+            onChange={(event) => set_query_input(event.target.value)}
+            placeholder="200 ZAR in USD"
+            className="pr-12 h-full"
+          />
+          <StCalculator className="size-5 text-muted-foreground absolute right-3 top-3.5" />
+        </div>
 
         <Card className="p-5">
           {loading ? (
@@ -222,8 +225,8 @@ const ConverterPage = (_props: RuntimeProps) => {
               <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-3">
                 <div className="flex flex-col items-center justify-center gap-1">
                   <h2 className="text-xl font-semibold">
-                    {input_amount} {from_currency.toLowerCase()} in{" "}
-                    {to_currency.toLowerCase()}
+                    {input_amount} {from_currency.toUpperCase()} in{" "}
+                    {to_currency.toUpperCase()}
                   </h2>
                   <Badge
                     variant="outline"
@@ -234,7 +237,7 @@ const ConverterPage = (_props: RuntimeProps) => {
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-1">
-                  <StArrowRightLong className="size-4 text-foreground" />
+                  <StArrowRightLong className="size-6 text-foreground shrink-0" />
                   <span className="text-xs text-muted-foreground">
                     {update_label}
                   </span>
@@ -265,7 +268,8 @@ const ConverterPage = (_props: RuntimeProps) => {
           <div className="mb-4">
             <h2 className="text-base font-semibold">Last 7 days trend</h2>
             <p className="text-xs text-muted-foreground">
-              {from_currency} and {to_currency} movement relative to {base_currency}.
+              {from_currency} and {to_currency} movement relative to{" "}
+              {base_currency}.
             </p>
           </div>
 
